@@ -1,8 +1,15 @@
-const CACHE = 'budget-pwa-v1';
-const FILES = ['/', '/index.html', '/manifest.json'];
+const CACHE = 'budget-pwa-v3';
+const BASE = '/apple-budget-test-ai';
+const FILES = [
+  BASE + '/',
+  BASE + '/index.html',
+  BASE + '/manifest.json',
+  BASE + '/icons/icon-192.png',
+  BASE + '/icons/icon-512.png',
+];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES).catch(() => {})));
   self.skipWaiting();
 });
 
@@ -15,6 +22,15 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request).catch(() => caches.match('/index.html')))
+    caches.match(e.request).then(cached => {
+      if (cached) return cached;
+      return fetch(e.request).then(res => {
+        if (res && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() => caches.match(BASE + '/index.html'));
+    })
   );
 });
